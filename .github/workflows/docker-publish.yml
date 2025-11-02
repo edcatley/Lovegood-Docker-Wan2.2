@@ -37,6 +37,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         
+      - name: List files in the repository
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Listing all files and folders:"
+          ls -la
+          
       - name: Maximize build space
         uses: easimon/maximize-build-space@master
         with:
