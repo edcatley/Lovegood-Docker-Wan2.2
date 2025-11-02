@@ -7,4 +7,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Step 3: Use the built-in script to permanently install our custom nodes.
 # This is the "official" way to add nodes. We just add our GCS uploader to the list.
-RUN comfy-node-install comfyui-kjnodes comfyui-ic-light comfyui_ipadapter_plus comfyui_essentials ComfyUI-Hangover-Nodes ComfyUI-GCS-Upload-Node
+RUN comfy-node-install comfyui-videohelpersuite comfyui-save-file-extended
