@@ -1,4 +1,1 @@
-runpod
 google-cloud-storage
-websocket-client
-requests
