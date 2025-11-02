@@ -37,11 +37,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         
-      - name: Free up disk space on the runner
-        uses: jlumbroso/free-disk-space-action@main
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@master
         with:
-          # This is the amount of free space we want to have, in GB
-          free-space-gb: 25
+          root-reserve-mb: 512
+          swap-size-mb: 1024
+          remove-dotnet: 'true'
           
       # Install the cosign tool except on PR
       # https://github.com/sigstore/cosign-installer
