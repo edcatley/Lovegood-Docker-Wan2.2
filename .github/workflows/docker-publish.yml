@@ -37,18 +37,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         
-      - name: List files in the repository
-        run: |
-          echo "Current directory: $(pwd)"
-          echo "Listing all files and folders:"
-          ls -la
-          
-      - name: Maximize build space
-        uses: easimon/maximize-build-space@master
-        with:
-          root-reserve-mb: 512
-          swap-size-mb: 1024
-          remove-dotnet: 'true'
+      # - name: Maximize build space
+      #   uses: easimon/maximize-build-space@master
+      #   with:
+      #     root-reserve-mb: 512
+      #     swap-size-mb: 1024
+      #     remove-dotnet: 'true'
           
       # Install the cosign tool except on PR
       # https://github.com/sigstore/cosign-installer
