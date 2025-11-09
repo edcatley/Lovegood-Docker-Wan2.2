@@ -44,9 +44,6 @@ REFRESH_WORKER = os.environ.get("REFRESH_WORKER", "false").lower() == "true"
 # Helper: quick reachability probe of ComfyUI HTTP endpoint (port 8188)
 # ---------------------------------------------------------------------------
 
-setup_gcs_credentials()
-storage_client = None
-
 
 def _comfy_server_status():
     """Return a dictionary with basic reachability info for the ComfyUI HTTP server."""
@@ -520,7 +517,8 @@ def setup_gcs_credentials():
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
     print("GCS credentials set up successfully.")
 
-
+setup_gcs_credentials()
+storage_client = None
 
 def handler(job):
     """
