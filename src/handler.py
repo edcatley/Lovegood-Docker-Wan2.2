@@ -13,6 +13,7 @@ import uuid
 import tempfile
 import socket
 import traceback
+from google.cloud import storage
 
 # Time to wait between API check attempts in milliseconds
 COMFY_API_AVAILABLE_INTERVAL_MS = 50
@@ -42,6 +43,9 @@ REFRESH_WORKER = os.environ.get("REFRESH_WORKER", "false").lower() == "true"
 # ---------------------------------------------------------------------------
 # Helper: quick reachability probe of ComfyUI HTTP endpoint (port 8188)
 # ---------------------------------------------------------------------------
+
+setup_gcs_credentials()
+storage_client = None
 
 
 def _comfy_server_status():
@@ -491,6 +495,32 @@ def get_image_data(filename, subfolder, image_type):
         )
         return None
 
+# This is the key part of the solution
+def setup_gcs_credentials():
+    """
+    Reads GCS credentials from an environment variable, writes them to a
+    temporary file, and sets the GOOGLE_APPLICATION_CREDENTIALS env var.
+    """
+    # 1. Get the JSON credential content from the RunPod secret
+    gcs_credentials_string = os.environ.get('GCS_SA_KEY_JSON')
+
+    if not gcs_credentials_string:
+        print("GCS_SA_KEY_JSON secret not found. GCS will not be available.")
+        return
+
+    # 2. Define a path in the container's temporary file system
+    #    This file will be automatically cleaned up when the pod spins down.
+    credentials_path = "/tmp/gcs_key.json"
+
+    # 3. Write the content to the file
+    with open(credentials_path, "w") as f:
+        f.write(gcs_credentials_string)
+
+    # 4. Set the environment variable that the Google Cloud library expects
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
+    print("GCS credentials set up successfully.")
+
+
 
 def handler(job):
     """
@@ -502,6 +532,8 @@ def handler(job):
     Returns:
         dict: A dictionary containing either an error message or a success status with generated images.
     """
+            # This allows us to modify the global client variable from within the handler
+    global storage_client 
     job_input = job["input"]
     job_id = job["id"]
 
@@ -665,13 +697,11 @@ def handler(job):
             if not errors:
                 errors.append(warning_msg)
 
-# --------------------------------------------------------------------------
+        # --------------------------------------------------------------------------
         # ------------------- MODIFIED OUTPUT PROCESSING BLOCK -------------------
         # --------------------------------------------------------------------------
         print(f"worker-comfyui - Processing {len(outputs)} output nodes...")
-        
-        # Lazily import google storage to avoid errors if not configured
-        storage = None 
+
 
         for node_id, node_output in outputs.items():
             # Look for any potential file outputs from common keys
@@ -694,12 +724,15 @@ def handler(job):
                             # --- UPLOAD LOGIC: Prioritize GCS, then S3, then Base64 ---
 
                             # 1. Google Cloud Storage Upload
-                            if os.environ.get("GCS_BUCKET_NAME"):
+                            # Check if the required environment variables are set
+                            if os.environ.get("GCS_BUCKET_NAME") and os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
                                 try:
-                                    if storage is None:
-                                        from google.cloud import storage
+                                    # NEW: Initialize the client only if it hasn't been already.
+                                    # This is highly efficient for serverless workers.
+                                    if storage_client is None:
+                                        print("worker-comfyui - Initializing Google Cloud Storage client...")
+                                        storage_client = storage.Client()
                                     
-                                    storage_client = storage.Client()
                                     bucket_name = os.environ.get("GCS_BUCKET_NAME")
                                     bucket = storage_client.bucket(bucket_name)
                                     
@@ -726,7 +759,8 @@ def handler(job):
                                     output_data.append({"filename": new_filename, "type": url_type, "data": url})
 
                                 except Exception as e:
-                                    error_msg = f"Error uploading {new_filename} to GCS: {e}"
+                                    # Add more detailed error logging
+                                    error_msg = f"Error uploading {new_filename} to GCS. Check bucket permissions and credentials. Details: {e}"
                                     print(f"worker-comfyui - {error_msg}")
                                     errors.append(error_msg)
                             
@@ -762,7 +796,6 @@ def handler(job):
         # --------------------------------------------------------------------------
         # ----------------- END OF MODIFIED OUTPUT PROCESSING BLOCK ----------------
         # --------------------------------------------------------------------------
-
     except websocket.WebSocketException as e:
         print(f"worker-comfyui - WebSocket Error: {e}")
         print(traceback.format_exc())
