@@ -10,3 +10,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN comfy-node-install comfyui-videohelpersuite comfymath comfy-gimm-vfi seedvr2_videoupscaler comfyui-frame-interpolation comfyui-unload-model
 
 COPY src/handler.py .
+COPY src/extra_model_paths.yaml /src/
