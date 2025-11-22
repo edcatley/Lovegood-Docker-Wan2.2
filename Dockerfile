@@ -10,3 +10,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN comfy-node-install comfyui-videohelpersuite comfymath seedvr2_videoupscaler comfyui-frame-interpolation tripleksampler randomseedgenerator
 
 COPY src/handler.py .
+
+# Change working directory to ComfyUI
+WORKDIR /comfyui
+
+# Support for the network volume
+ADD src/extra_model_paths.yaml ./
+
+# Go back to the root
+WORKDIR /
