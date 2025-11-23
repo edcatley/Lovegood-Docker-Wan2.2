@@ -1,5 +1,5 @@
 # Step 1: Start FROM the official, versioned RunPod ComfyUI image.
-FROM runpod/worker-comfyui:5.5.0-base
+FROM runpod/worker-comfyui:5.5.1-base
 
 # Step 2: Install our single, required Python dependency for GCS.
 COPY requirements.txt .
