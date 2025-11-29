@@ -169,11 +169,19 @@ def validate_input(job_input):
     # Optional: API key for Comfy.org API Nodes, passed per-request
     comfy_org_api_key = job_input.get("comfy_org_api_key")
 
+    # Optional: Pre-signed URL for direct upload
+    signed_upload_url = job_input.get("signed_upload_url")
+
+    # Optional: Output filename
+    output_filename = job_input.get("output_filename")
+
     # Return validated data and no error
     return {
         "workflow": workflow,
         "images": images,
         "comfy_org_api_key": comfy_org_api_key,
+        "signed_upload_url": signed_upload_url,
+        "output_filename": output_filename,
     }, None
 
 
@@ -719,11 +727,30 @@ def handler(job):
                         file_bytes = get_image_data(original_filename, subfolder, file_type)
 
                         if file_bytes:
-                            # --- UPLOAD LOGIC: Prioritize GCS, then S3, then Base64 ---
+                            # --- UPLOAD LOGIC: Prioritize Signed URL, then GCS, then S3, then Base64 ---
 
-                            # 1. Google Cloud Storage Upload
+                            # 1. Signed Upload URL (if provided in input)
+                            if validated_data.get("signed_upload_url"):
+                                try:
+                                    signed_url = validated_data["signed_upload_url"]
+                                    print(f"worker-comfyui - Uploading {original_filename} to signed URL...")
+                                    
+                                    # PUT request with the file bytes
+                                    headers = {"Content-Type": "video/mp4"}
+                                    response = requests.put(signed_url, data=file_bytes, headers=headers, timeout=60)
+                                    response.raise_for_status()
+                                    
+                                    print(f"worker-comfyui - Successfully uploaded {original_filename} to signed URL")
+                                    # Don't append to output_data - client already knows the URL
+                                    
+                                except Exception as e:
+                                    error_msg = f"Error uploading {original_filename} to signed URL: {e}"
+                                    print(f"worker-comfyui - {error_msg}")
+                                    errors.append(error_msg)
+                            
+                            # 2. Google Cloud Storage Upload
                             # Check if the required environment variables are set
-                            if os.environ.get("GCS_BUCKET_NAME") and os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+                            elif os.environ.get("GCS_BUCKET_NAME") and os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
                                 try:
                                     # NEW: Initialize the client only if it hasn't been already.
                                     # This is highly efficient for serverless workers.
@@ -762,7 +789,7 @@ def handler(job):
                                     print(f"worker-comfyui - {error_msg}")
                                     errors.append(error_msg)
                             
-                            # 2. S3 (Runpod Storage) Upload
+                            # 3. S3 (Runpod Storage) Upload
                             elif os.environ.get("BUCKET_ENDPOINT_URL"):
                                 try:
                                     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_file:
@@ -778,7 +805,7 @@ def handler(job):
                                     print(f"worker-comfyui - {error_msg}")
                                     errors.append(error_msg)
                             
-                            # 3. Base64 Fallback
+                            # 4. Base64 Fallback
                             else:
                                 try:
                                     base64_file = base64.b64encode(file_bytes).decode("utf-8")
