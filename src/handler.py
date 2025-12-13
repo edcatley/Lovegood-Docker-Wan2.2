@@ -550,6 +550,7 @@ def handler(job):
 
     # Extract validated data
     workflow = validated_data["workflow"]
+    print(f"worker-comfyui - DEBUG: Workflow JSON: {json.dumps(workflow)}")
     input_images = validated_data.get("images")
 
     # Make sure that the ComfyUI HTTP API is available before proceeding
