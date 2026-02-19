@@ -1,5 +1,5 @@
-runpod_worker_comfy:
-  base_path: /runpod-volume
+generic_storage:
+  base_path: /network-volume
   checkpoints: models/checkpoints/
   clip: models/clip/
   clip_vision: models/clip_vision/
