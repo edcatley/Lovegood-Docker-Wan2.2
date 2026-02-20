@@ -47,6 +47,10 @@ RUN chmod +x /usr/local/bin/comfy-node-install
 COPY requirements.txt .
 RUN uv pip install --no-cache-dir -r requirements.txt
 
+# Install sidecar dependencies
+COPY sidecar/requirements.txt /sidecar/requirements.txt
+RUN uv pip install --no-cache-dir -r /sidecar/requirements.txt
+
 ENV PIP_NO_INPUT=1
 RUN comfy-node-install \
     comfyui-videohelpersuite \
@@ -57,13 +61,16 @@ RUN comfy-node-install \
     seedvr2_videoupscaler \
     comfyui-frame-interpolation \
     tripleksampler \
-    comfyui-unload-model
+    comfyui-unload-model 
 
-# 7. STARTUP SCRIPT
+# 7. SIDECAR
+COPY sidecar/handler.py /sidecar/handler.py
+
+# 8. STARTUP SCRIPT
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
-# 8. EXPOSE COMFYUI PORT
-EXPOSE 8188
+# 9. EXPOSE PORTS (ComfyUI + sidecar)
+EXPOSE 8188 8189
 
 CMD ["/start.sh"]
